@@ -1,0 +1,5 @@
+{
+  "name": "Raid Gear Grader",
+  "description": "Analyze Raid: Shadow Legends gear screenshots to get keep/sell recommendations and champion pairings based on your roster.",
+  "requestFramePermissions": []
+}
