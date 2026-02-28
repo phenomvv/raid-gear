@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Loader2, ShieldAlert, ShieldCheck, Swords, Menu, Keyboard, Camera } from 'lucide-react';
+import { Upload, Image as ImageIcon, Loader2, ShieldAlert, ShieldCheck, Swords, Menu, Keyboard, Camera, Sparkles, RotateCcw, ArrowUpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { analyzeGear, evaluateManualGear } from '../services/gemini';
 import { AnalysisResult, Champion, GearItem } from '../types';
@@ -24,10 +24,14 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
   const handleManualSubmit = async (details: {
     type: string;
     set: string;
+    faction?: string;
     rank: string;
     rarity: string;
+    level: number;
     mainStat: string;
     substats: string[];
+    substatEnchants?: number[];
+    ascensionStat?: string;
   }) => {
     setError(null);
     setResult(null);
@@ -255,26 +259,8 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+              className="max-w-2xl mx-auto space-y-6"
             >
-              {/* Image Preview */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-zinc-400" />
-                  {imagePreview ? 'Scanned Gear' : 'Gear Details'}
-                </h3>
-                <div className="bg-zinc-900 rounded-2xl p-2 border border-zinc-800 overflow-hidden min-h-[200px] flex items-center justify-center">
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Gear preview" className="w-full h-auto rounded-xl" />
-                  ) : (
-                    <div className="text-zinc-600 flex flex-col items-center gap-2">
-                      <Keyboard className="w-12 h-12 opacity-20" />
-                      <p className="text-xs font-bold uppercase tracking-widest">Manual Entry Mode</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Analysis Results */}
               <div className="space-y-6">
                 {/* Verdict Card */}
@@ -328,22 +314,46 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
                       <p className="font-medium">{result.gearDetails.set}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-zinc-500 mb-1">Rank & Rarity</p>
-                      <p className="font-medium">{result.gearDetails.rank} {result.gearDetails.rarity}</p>
+                      <p className="text-xs text-zinc-500 mb-1">Rank, Rarity & Level</p>
+                      <p className={`font-bold ${
+                        {
+                          Mythical: 'text-red-500',
+                          Legendary: 'text-orange-500',
+                          Epic: 'text-purple-500',
+                          Rare: 'text-sky-400',
+                        }[result.gearDetails.rarity] || 'text-white'
+                      }`}>
+                        {result.gearDetails.rank} {result.gearDetails.rarity} +{result.gearDetails.level || 0}
+                      </p>
                     </div>
                   </div>
                   <div className="mb-4">
                     <p className="text-xs text-zinc-500 mb-1">Main Stat</p>
                     <p className="font-bold text-lg text-indigo-400">{result.gearDetails.mainStat}</p>
                   </div>
+                  {result.gearDetails.ascensionStat && (
+                    <div className="mb-4">
+                      <p className="text-xs text-zinc-500 mb-1">Ascension Stat</p>
+                      <p className="font-bold text-indigo-300">{result.gearDetails.ascensionStat}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs text-zinc-500 mb-2">Substats</p>
                     <ul className="space-y-1">
-                      {result.gearDetails.substats.map((sub, i) => (
-                        <li key={i} className="text-sm font-mono bg-zinc-950 px-3 py-1.5 rounded-md border border-zinc-800/50">
-                          {sub}
-                        </li>
-                      ))}
+                      {result.gearDetails.substats.map((sub, i) => {
+                        const enchant = result.gearDetails.substatEnchants?.[i];
+                        return (
+                          <li key={i} className="text-sm font-mono bg-zinc-950 px-3 py-1.5 rounded-md border border-zinc-800/50 flex justify-between items-center">
+                            <span>{sub}</span>
+                            {enchant ? (
+                              <span className="flex items-center gap-1 text-amber-400 text-xs font-bold">
+                                <Sparkles className="w-3 h-3" />
+                                +{enchant}
+                              </span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 </div>
@@ -362,6 +372,47 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
                           <p className="text-sm text-zinc-400 leading-relaxed">{rec.reason}</p>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Enhancement Advice */}
+                {result.evaluation.verdict === 'KEEP' && result.enhancements && (
+                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                    <h3 className="text-sm font-medium uppercase tracking-wider text-zinc-500 mb-4 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      Enhancement Strategy
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="flex items-start gap-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg shrink-0">
+                          <Sparkles className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Enchant (Glyphs)</p>
+                          <p className="text-sm text-zinc-200">{result.enhancements.enchant}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="p-2 bg-amber-500/10 rounded-lg shrink-0">
+                          <RotateCcw className="w-4 h-4 text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Rework (Chaos Ore)</p>
+                          <p className="text-sm text-zinc-200">{result.enhancements.rework}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg shrink-0">
+                          <ArrowUpCircle className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Ascend (Oil)</p>
+                          <p className="text-sm text-zinc-200">{result.enhancements.ascend}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

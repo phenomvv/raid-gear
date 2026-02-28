@@ -1,15 +1,16 @@
 import React from 'react';
-import { Trash2, Calendar, Star, TrendingUp, User, Plus } from 'lucide-react';
+import { Trash2, Calendar, Star, TrendingUp, User, Plus, Shield, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GearItem } from '../types';
+import { GearItem, Champion } from '../types';
 
 interface GearInventoryProps {
   inventory: GearItem[];
+  roster: Champion[];
   onRemove: (id: string) => void;
   onAddManual: () => void;
 }
 
-export function GearInventory({ inventory, onRemove, onAddManual }: GearInventoryProps) {
+export function GearInventory({ inventory, roster, onRemove, onAddManual }: GearInventoryProps) {
   return (
     <div className="h-full overflow-y-auto bg-zinc-950 p-4 md:p-8 text-zinc-100">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -46,25 +47,45 @@ export function GearInventory({ inventory, onRemove, onAddManual }: GearInventor
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <AnimatePresence mode="popLayout">
-              {inventory.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col group relative"
-                >
-                  {/* Compact Header */}
-                  <div className="p-1.5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/30">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                      <span className="font-bold text-[9px] tracking-wide uppercase truncate">{item.gearDetails.set}</span>
+              {inventory.map((item) => {
+                const rarityColor = {
+                  Mythical: 'border-red-600 shadow-[inset_0_0_12px_rgba(220,38,38,0.15)]',
+                  Legendary: 'border-orange-500 shadow-[inset_0_0_12px_rgba(249,115,22,0.15)]',
+                  Epic: 'border-purple-500 shadow-[inset_0_0_12px_rgba(168,85,247,0.15)]',
+                  Rare: 'border-sky-500 shadow-[inset_0_0_12px_rgba(14,165,233,0.15)]',
+                }[item.gearDetails.rarity] || 'border-zinc-800';
+
+                const dotColor = {
+                  Mythical: 'bg-red-500',
+                  Legendary: 'bg-orange-500',
+                  Epic: 'bg-purple-500',
+                  Rare: 'bg-sky-500',
+                }[item.gearDetails.rarity] || 'bg-indigo-500';
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className={`bg-zinc-900 border ${rarityColor} rounded-xl overflow-hidden flex flex-col group relative transition-colors duration-300`}
+                  >
+                    {/* Compact Header */}
+                    <div className="p-1.5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/30">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.equippedTo ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : `${dotColor} shadow-[0_0_8px_rgba(255,255,255,0.2)]`}`} />
+                        <span className="font-bold text-[9px] tracking-wide uppercase truncate">{item.gearDetails.set}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[9px] font-mono text-indigo-400 font-bold">
+                          {item.evaluation.score}
+                        </span>
+                        {item.enhancements && (
+                          <Sparkles className="w-2 h-2 text-amber-400" />
+                        )}
+                      </div>
                     </div>
-                    <span className="text-[9px] font-mono text-indigo-400 font-bold shrink-0">
-                      {item.evaluation.score}
-                    </span>
-                  </div>
 
                   {/* Main Info */}
                   <div className="p-1.5 flex gap-1.5">
@@ -74,9 +95,16 @@ export function GearInventory({ inventory, onRemove, onAddManual }: GearInventor
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-indigo-300 text-[9px] truncate leading-tight">{item.gearDetails.mainStat}</p>
+                      <p className="font-bold text-indigo-300 text-[9px] truncate leading-tight">
+                        {item.gearDetails.mainStat}
+                        {item.gearDetails.ascensionStat && (
+                          <span className="text-indigo-400 ml-1">
+                            (+{item.gearDetails.ascensionStat})
+                          </span>
+                        )}
+                      </p>
                       <p className="text-[8px] text-zinc-500 mt-0.5 uppercase font-bold truncate">
-                        {item.gearDetails.rank} • {item.gearDetails.rarity}
+                        {item.gearDetails.rank} • {item.gearDetails.rarity} • +{item.gearDetails.level || 0}
                       </p>
                     </div>
                   </div>
@@ -84,24 +112,37 @@ export function GearInventory({ inventory, onRemove, onAddManual }: GearInventor
                   {/* Substats - Compact Grid */}
                   <div className="px-1.5 pb-1.5">
                     <div className="grid grid-cols-1 gap-0.5">
-                      {item.gearDetails.substats.slice(0, 4).map((sub, i) => (
-                        <div key={i} className="text-[8px] bg-zinc-950 px-1 py-0.5 rounded border border-zinc-800/30 text-zinc-400 font-mono truncate leading-tight">
-                          {sub}
-                        </div>
-                      ))}
+                      {item.gearDetails.substats.slice(0, 4).map((sub, i) => {
+                        const enchant = item.gearDetails.substatEnchants?.[i];
+                        return (
+                          <div key={i} className="text-[8px] bg-zinc-950 px-1 py-0.5 rounded border border-zinc-800/30 text-zinc-400 font-mono truncate leading-tight flex justify-between items-center">
+                            <span>{sub}</span>
+                            {enchant ? <span className="text-amber-400 ml-0.5 shrink-0">+{enchant}</span> : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Recommendations - Very Compact */}
-                  {item.recommendations.length > 0 && (
+                  {(item.recommendations.length > 0 || item.equippedTo) && (
                     <div className="px-1.5 pb-1.5 mt-auto">
                       <div className="flex flex-wrap gap-0.5">
-                        {item.recommendations.slice(0, 2).map((rec, i) => (
-                          <div key={i} className="flex items-center gap-0.5 bg-zinc-800 px-1 py-0.5 rounded border border-zinc-700/30">
-                            <User className="w-1.5 h-1.5 text-indigo-400" />
-                            <span className="text-[7px] font-bold text-zinc-300 truncate max-w-[35px]">{rec.champion}</span>
+                        {item.equippedTo ? (
+                          <div className="flex items-center gap-0.5 bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-500/30">
+                            <Shield className="w-1.5 h-1.5 text-emerald-400" />
+                            <span className="text-[7px] font-bold text-emerald-400 truncate max-w-[50px]">
+                              {roster.find(c => c.id === item.equippedTo)?.name || 'Equipped'}
+                            </span>
                           </div>
-                        ))}
+                        ) : (
+                          item.recommendations.slice(0, 2).map((rec, i) => (
+                            <div key={i} className="flex items-center gap-0.5 bg-zinc-800 px-1 py-0.5 rounded border border-zinc-700/30">
+                              <User className="w-1.5 h-1.5 text-indigo-400" />
+                              <span className="text-[7px] font-bold text-zinc-300 truncate max-w-[35px]">{rec.champion}</span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
@@ -115,7 +156,8 @@ export function GearInventory({ inventory, onRemove, onAddManual }: GearInventor
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </motion.div>
-              ))}
+              );
+            })}
             </AnimatePresence>
           </div>
         )}

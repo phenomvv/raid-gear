@@ -1,26 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Users, Search } from 'lucide-react';
-import { Champion } from '../types';
-import { POPULAR_CHAMPIONS } from '../constants';
+import { Plus, X, Users, Search, ChevronDown } from 'lucide-react';
+import { Champion, Stats } from '../types';
+import { POPULAR_CHAMPIONS, ChampionData, FACTIONS } from '../constants';
+
+const generateBaseStats = (): Stats => ({
+  HP: 12000 + Math.floor(Math.random() * 8000),
+  ATK: 800 + Math.floor(Math.random() * 600),
+  DEF: 800 + Math.floor(Math.random() * 600),
+  SPD: 90 + Math.floor(Math.random() * 25),
+  C_RATE: 15,
+  C_DMG: 50,
+  RES: 30,
+  ACC: 0
+});
 
 interface RosterSidebarProps {
   roster: Champion[];
   setRoster: React.Dispatch<React.SetStateAction<Champion[]>>;
   isOpen: boolean;
   onClose: () => void;
+  onSelectChampion: (champion: Champion) => void;
 }
 
-export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSidebarProps) {
+export function RosterSidebar({ roster, setRoster, isOpen, onClose, onSelectChampion }: RosterSidebarProps) {
   const [newChamp, setNewChamp] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedFaction, setSelectedFaction] = useState(FACTIONS[0]);
+  const [suggestions, setSuggestions] = useState<ChampionData[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (newChamp.trim().length > 1) {
       const filtered = POPULAR_CHAMPIONS.filter(c => 
-        c.toLowerCase().includes(newChamp.toLowerCase()) &&
-        !roster.some(r => r.name.toLowerCase() === c.toLowerCase())
+        c.name.toLowerCase().includes(newChamp.toLowerCase()) &&
+        !roster.some(r => r.name.toLowerCase() === c.name.toLowerCase())
       ).slice(0, 5);
       setSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
@@ -40,12 +53,14 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSide
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleAdd = (name: string) => {
+  const handleAdd = (name: string, faction?: string) => {
     if (!name.trim()) return;
     
     const newChampion: Champion = {
       id: crypto.randomUUID(),
-      name: name.trim()
+      name: name.trim(),
+      faction: faction,
+      baseStats: generateBaseStats()
     };
     
     setRoster([...roster, newChampion]);
@@ -55,7 +70,7 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSide
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleAdd(newChamp);
+    handleAdd(newChamp, selectedFaction);
   };
 
   const handleRemove = (id: string) => {
@@ -89,14 +104,14 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSide
         </div>
 
       <div className="p-4 border-b border-zinc-800 relative" ref={suggestionRef}>
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <div className="relative flex-1">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="relative">
             <input
               type="text"
               value={newChamp}
               onChange={(e) => setNewChamp(e.target.value)}
               onFocus={() => newChamp.length > 1 && setShowSuggestions(true)}
-              placeholder="e.g. Arbiter, Kael..."
+              placeholder="Champion Name..."
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
             {showSuggestions && (
@@ -105,23 +120,40 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSide
                   <button
                     key={index}
                     type="button"
-                    onClick={() => handleAdd(suggestion)}
+                    onClick={() => handleAdd(suggestion.name, suggestion.faction)}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-800 transition-colors flex items-center justify-between group"
                   >
-                    <span>{suggestion}</span>
+                    <div className="flex flex-col">
+                      <span className="font-bold">{suggestion.name}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{suggestion.faction}</span>
+                    </div>
                     <Plus className="w-3 h-3 text-zinc-500 group-hover:text-indigo-400" />
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <button
-            type="submit"
-            disabled={!newChamp.trim()}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
+          
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <select
+                value={selectedFaction}
+                onChange={(e) => setSelectedFaction(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+              >
+                {FACTIONS.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
+            </div>
+            <button
+              type="submit"
+              disabled={!newChamp.trim()}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors shrink-0 flex items-center gap-2 text-sm font-bold"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          </div>
         </form>
       </div>
 
@@ -135,7 +167,8 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSide
             {roster.map((champ) => (
               <li
                 key={champ.id}
-                className="flex items-center justify-between bg-zinc-800/50 rounded-xl px-3 py-2.5 group hover:bg-zinc-800 transition-all border border-zinc-800/50 hover:border-zinc-700"
+                className="flex items-center justify-between bg-zinc-800/50 rounded-xl px-3 py-2.5 group hover:bg-zinc-800 transition-all border border-zinc-800/50 hover:border-zinc-700 cursor-pointer"
+                onClick={() => onSelectChampion(champ)}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-700 bg-zinc-950 shrink-0">
@@ -145,10 +178,18 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose }: RosterSide
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="text-sm font-bold tracking-tight">{champ.name}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold tracking-tight">{champ.name}</span>
+                    {champ.faction && (
+                      <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-medium">{champ.faction}</span>
+                    )}
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleRemove(champ.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemove(champ.id);
+                  }}
                   className="text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1"
                 >
                   <X className="w-4 h-4" />
