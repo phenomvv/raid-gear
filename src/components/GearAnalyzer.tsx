@@ -39,13 +39,19 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
     setImagePreview(null);
     setIsAnalyzing(true);
 
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'undefined') {
+      setError('Gemini API Key is missing. Please set GEMINI_API_KEY in your environment variables.');
+      setIsAnalyzing(false);
+      return;
+    }
+
     try {
       const rosterNames = roster.map(c => c.name);
       const analysis = await evaluateManualGear(details, rosterNames);
       setResult(analysis);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Failed to evaluate gear. Please try again.');
+      setError(err.message || 'Failed to evaluate gear. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -100,6 +106,13 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
     
     // Analyze
     setIsAnalyzing(true);
+
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'undefined') {
+      setError('Gemini API Key is missing. Please set GEMINI_API_KEY in your environment variables.');
+      setIsAnalyzing(false);
+      return;
+    }
+
     try {
       const { base64, preview } = await resizeImage(file);
       setImagePreview(preview);
@@ -107,9 +120,9 @@ export function GearAnalyzer({ roster, onOpenSidebar, onSave, initialMode = 'upl
       const rosterNames = roster.map(c => c.name);
       const analysis = await analyzeGear(base64, 'image/jpeg', rosterNames);
       setResult(analysis);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Failed to analyze gear. Please try again.');
+      setError(err.message || 'Failed to analyze gear. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }

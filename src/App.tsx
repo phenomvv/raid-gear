@@ -71,7 +71,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-zinc-950 overflow-hidden font-sans">
+    <div className="fixed inset-0 flex h-full w-full bg-zinc-950 overflow-hidden font-sans select-none">
       <RosterSidebar 
         roster={roster} 
         setRoster={setRoster} 
@@ -82,7 +82,7 @@ export default function App() {
       
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation */}
-        <div className="bg-zinc-900 border-b border-zinc-800 px-4 md:px-8 py-3 flex items-center justify-between">
+        <div className="bg-zinc-900 border-b border-zinc-800 px-4 md:px-8 py-3 flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <div className="flex items-center gap-1 md:gap-4">
             <button 
               onClick={() => setActiveTab('analyzer')}

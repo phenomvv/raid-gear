@@ -105,85 +105,96 @@ export async function analyzeGear(
 
   Return the analysis in JSON format following the schema. Ensure the 'verdict' is strictly 'KEEP' or 'SELL' based on the provided rubric.`;
 
-  const response = await getAI().models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: [
-      {
-        inlineData: {
-          data: imageBase64,
-          mimeType: mimeType,
+  try {
+    const response = await getAI().models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: mimeType,
+          },
         },
-      },
-      { text: prompt },
-    ],
-    config: {
-      systemInstruction: GEAR_EVALUATION_RUBRIC,
-      temperature: 0,
-      seed: 42,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          gearDetails: {
-            type: Type.OBJECT,
-            properties: {
-              type: { type: Type.STRING },
-              set: { type: Type.STRING },
-              faction: { type: Type.STRING, description: "Optional: Faction for accessories" },
-              rank: { type: Type.STRING },
-              rarity: { type: Type.STRING },
-              level: { type: Type.NUMBER, description: "The upgrade level (0, 4, 8, 12, 16)" },
-              mainStat: { type: Type.STRING },
-              substats: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-            },
-            required: ['type', 'set', 'rank', 'rarity', 'mainStat', 'substats'],
-          },
-          evaluation: {
-            type: Type.OBJECT,
-            properties: {
-              score: { type: Type.NUMBER },
-              verdict: { type: Type.STRING, description: "Must be 'KEEP' or 'SELL'" },
-              reasoning: { type: Type.STRING },
-            },
-            required: ['score', 'verdict', 'reasoning'],
-          },
-          recommendations: {
-            type: Type.ARRAY,
-            items: {
+        { text: prompt },
+      ],
+      config: {
+        systemInstruction: GEAR_EVALUATION_RUBRIC,
+        temperature: 0,
+        seed: 42,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            gearDetails: {
               type: Type.OBJECT,
               properties: {
-                champion: { type: Type.STRING },
-                reason: { type: Type.STRING },
+                type: { type: Type.STRING },
+                set: { type: Type.STRING },
+                faction: { type: Type.STRING, description: "Optional: Faction for accessories" },
+                rank: { type: Type.STRING },
+                rarity: { type: Type.STRING },
+                level: { type: Type.NUMBER, description: "The upgrade level (0, 4, 8, 12, 16)" },
+                mainStat: { type: Type.STRING },
+                substats: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
               },
-              required: ['champion', 'reason'],
+              required: ['type', 'set', 'rank', 'rarity', 'mainStat', 'substats'],
+            },
+            evaluation: {
+              type: Type.OBJECT,
+              properties: {
+                score: { type: Type.NUMBER },
+                verdict: { type: Type.STRING, description: "Must be 'KEEP' or 'SELL'" },
+                reasoning: { type: Type.STRING },
+              },
+              required: ['score', 'verdict', 'reasoning'],
+            },
+            recommendations: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  champion: { type: Type.STRING },
+                  reason: { type: Type.STRING },
+                },
+                required: ['champion', 'reason'],
+              },
+            },
+            enhancements: {
+              type: Type.OBJECT,
+              properties: {
+                enchant: { type: Type.STRING },
+                rework: { type: Type.STRING },
+                ascend: { type: Type.STRING },
+              },
+              required: ['enchant', 'rework', 'ascend'],
             },
           },
-          enhancements: {
-            type: Type.OBJECT,
-            properties: {
-              enchant: { type: Type.STRING },
-              rework: { type: Type.STRING },
-              ascend: { type: Type.STRING },
-            },
-            required: ['enchant', 'rework', 'ascend'],
-          },
+          required: ['gearDetails', 'evaluation', 'recommendations', 'enhancements'],
         },
-        required: ['gearDetails', 'evaluation', 'recommendations', 'enhancements'],
       },
-    },
-  });
+    });
 
-  const text = response.text;
-  if (!text) {
-    throw new Error('Failed to generate analysis');
+    const text = response.text;
+    if (!text) {
+      throw new Error('The AI model returned an empty response. This might be a temporary issue with the service.');
+    }
+
+    const result = JSON.parse(text) as AnalysisResult;
+    cache.set(cacheKey, result);
+    return result;
+  } catch (error: any) {
+    console.error('Error in analyzeGear:', error);
+    if (error.message?.includes('API_KEY_INVALID')) {
+      throw new Error('Invalid API Key. Please check your configuration.');
+    }
+    if (error.message?.includes('fetch failed')) {
+      throw new Error('Network error. Please check your internet connection.');
+    }
+    throw error;
   }
-
-  const result = JSON.parse(text) as AnalysisResult;
-  cache.set(cacheKey, result);
-  return result;
 }
 
 export async function evaluateManualGear(
@@ -224,77 +235,85 @@ export async function evaluateManualGear(
 
   Return the evaluation in JSON format following the schema. Ensure the 'verdict' is strictly 'KEEP' or 'SELL' based on the provided rubric.`;
 
-  const response = await getAI().models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: { parts: [{ text: prompt }] },
-    config: {
-      systemInstruction: GEAR_EVALUATION_RUBRIC,
-      temperature: 0,
-      seed: 42,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          gearDetails: {
-            type: Type.OBJECT,
-            properties: {
-              type: { type: Type.STRING },
-              set: { type: Type.STRING },
-              faction: { type: Type.STRING, description: "Optional: Faction for accessories" },
-              rank: { type: Type.STRING },
-              rarity: { type: Type.STRING },
-              level: { type: Type.NUMBER, description: "The upgrade level (0, 4, 8, 12, 16)" },
-              mainStat: { type: Type.STRING },
-              substats: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-            },
-            required: ['type', 'set', 'rank', 'rarity', 'mainStat', 'substats'],
-          },
-          evaluation: {
-            type: Type.OBJECT,
-            properties: {
-              score: { type: Type.NUMBER },
-              verdict: { type: Type.STRING, description: "Must be 'KEEP' or 'SELL'" },
-              reasoning: { type: Type.STRING },
-            },
-            required: ['score', 'verdict', 'reasoning'],
-          },
-          recommendations: {
-            type: Type.ARRAY,
-            items: {
+  try {
+    const response = await getAI().models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        systemInstruction: GEAR_EVALUATION_RUBRIC,
+        temperature: 0,
+        seed: 42,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            gearDetails: {
               type: Type.OBJECT,
               properties: {
-                champion: { type: Type.STRING },
-                reason: { type: Type.STRING },
+                type: { type: Type.STRING },
+                set: { type: Type.STRING },
+                faction: { type: Type.STRING, description: "Optional: Faction for accessories" },
+                rank: { type: Type.STRING },
+                rarity: { type: Type.STRING },
+                level: { type: Type.NUMBER, description: "The upgrade level (0, 4, 8, 12, 16)" },
+                mainStat: { type: Type.STRING },
+                substats: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
               },
-              required: ['champion', 'reason'],
+              required: ['type', 'set', 'rank', 'rarity', 'mainStat', 'substats'],
+            },
+            evaluation: {
+              type: Type.OBJECT,
+              properties: {
+                score: { type: Type.NUMBER },
+                verdict: { type: Type.STRING, description: "Must be 'KEEP' or 'SELL'" },
+                reasoning: { type: Type.STRING },
+              },
+              required: ['score', 'verdict', 'reasoning'],
+            },
+            recommendations: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  champion: { type: Type.STRING },
+                  reason: { type: Type.STRING },
+                },
+                required: ['champion', 'reason'],
+              },
+            },
+            enhancements: {
+              type: Type.OBJECT,
+              properties: {
+                enchant: { type: Type.STRING },
+                rework: { type: Type.STRING },
+                ascend: { type: Type.STRING },
+              },
+              required: ['enchant', 'rework', 'ascend'],
             },
           },
-          enhancements: {
-            type: Type.OBJECT,
-            properties: {
-              enchant: { type: Type.STRING },
-              rework: { type: Type.STRING },
-              ascend: { type: Type.STRING },
-            },
-            required: ['enchant', 'rework', 'ascend'],
-          },
+          required: ['gearDetails', 'evaluation', 'recommendations', 'enhancements'],
         },
-        required: ['gearDetails', 'evaluation', 'recommendations', 'enhancements'],
       },
-    },
-  });
+    });
 
-  const text = response.text;
-  if (!text) {
-    throw new Error('Failed to generate evaluation');
+    const text = response.text;
+    if (!text) {
+      throw new Error('The AI model returned an empty response.');
+    }
+
+    const result = JSON.parse(text) as AnalysisResult;
+    cache.set(cacheKey, result);
+    return result;
+  } catch (error: any) {
+    console.error('Error in evaluateManualGear:', error);
+    if (error.message?.includes('API_KEY_INVALID')) {
+      throw new Error('Invalid API Key. Please check your configuration.');
+    }
+    throw error;
   }
-
-  const result = JSON.parse(text) as AnalysisResult;
-  cache.set(cacheKey, result);
-  return result;
 }
 
 export async function optimizeTeam(

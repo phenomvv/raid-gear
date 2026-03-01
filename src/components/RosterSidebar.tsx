@@ -87,8 +87,8 @@ export function RosterSidebar({ roster, setRoster, isOpen, onClose, onSelectCham
         />
       )}
       
-      <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-zinc-900 border-r border-zinc-800 h-screen flex flex-col text-zinc-100 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-zinc-800 flex justify-between items-start">
+      <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-zinc-900 border-r border-zinc-800 h-screen flex flex-col text-zinc-100 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} pl-[env(safe-area-inset-left)]`}>
+        <div className="p-6 border-b border-zinc-800 flex justify-between items-start pt-[calc(1.5rem+env(safe-area-inset-top))]">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Users className="w-6 h-6 text-indigo-400" />
