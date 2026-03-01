@@ -533,7 +533,7 @@ export function ManualGearForm({ onSubmit, isAnalyzing, initialData, submitLabel
               <p className="text-[10px] text-zinc-400 leading-relaxed">
                 {visibleCount === 0 
                   ? "Common gear at level 0 has no substats. Level it up to unlock them!" 
-                  : "Select the stat type, enter the value, and select the number of rolls (max 4 total)."}
+                  : `Currently showing ${visibleCount} substats based on rarity and level. Substats unlock at +4, +8, +12, and +16 depending on the starting rarity.`}
               </p>
             </div>
             {totalRolls > 4 && (

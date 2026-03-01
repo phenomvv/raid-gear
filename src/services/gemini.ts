@@ -1,7 +1,26 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { AnalysisResult, ContentStrategy, Stats, Champion } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+      console.error('Gemini API Key is missing or invalid. Please check your environment variables.');
+      throw new Error('GEMINI_API_KEY is not defined. Please set it in your environment variables.');
+    }
+    
+    try {
+      aiInstance = new GoogleGenAI({ apiKey });
+    } catch (error) {
+      console.error('Failed to initialize GoogleGenAI:', error);
+      throw error;
+    }
+  }
+  return aiInstance;
+}
 
 // Simple in-memory cache to reduce redundant API calls and data usage
 const cache = new Map<string, any>();
@@ -40,12 +59,15 @@ Follow this strict protocol:
    - 4-star gear or lower is ALWAYS "SELL" for mid-game players.
    - Gear with 3+ flat substats (ATK, DEF, HP) at +0 is almost always "SELL".
 
-3. ROLLS & UPGRADES:
+3. ROLLS & RARITY:
+   - SUBSTAT UNLOCKS: Rare gear starts with 2 substats but gains a 3rd at +12 and a 4th at +16. Epic gear starts with 3 and gains a 4th at +16. Legendary gear starts with all 4.
+   - CRITICAL KNOWLEDGE: Never state that Rare gear is "limited to 2 substats". It simply starts with 2. All gear (except Common/Uncommon/Rare at low levels) eventually has 4 substats at +16.
    - MULTI-ROLLS: Double (2), Triple (3), and Quad (4) rolls in a single substat significantly increase the score.
    - ROLL LIMIT: A gear piece can only have a total of 4 rolls across all substats (e.g., a triple roll in one stat and a single roll in another).
    - DESIRABLE MULTI-ROLLS: Triple/Quad rolls in Speed, Crit Rate, Crit DMG, HP%, DEF%, ATK%, Accuracy, or Resistance are extremely valuable (Score 85+).
    - REWORK VALUE: Triple/Quad rolls in "bad" stats (Flat HP/ATK/DEF) on 6-star Legendary/Mythical gear are worth keeping (Score 70+) because they can be REWORKED with Chaos Ore.
    - UPGRADE LEVEL: A piece at +16 with confirmed good rolls is more valuable than a +0 piece with "potential".
+   - POTENTIAL VS ACTUAL: For gear at +0 to +12, evaluate based on the potential of the remaining rolls. For gear at +16, evaluate based on the actual rolls achieved. A triple/quad roll at +16 should significantly boost the score compared to its +0 version.
 
 4. KEEP CRITERIA:
    - 6-star Legendary/Mythical with at least 2 synergistic substats.
@@ -83,7 +105,7 @@ export async function analyzeGear(
 
   Return the analysis in JSON format following the schema. Ensure the 'verdict' is strictly 'KEEP' or 'SELL' based on the provided rubric.`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: [
       {
@@ -202,7 +224,7 @@ export async function evaluateManualGear(
 
   Return the evaluation in JSON format following the schema. Ensure the 'verdict' is strictly 'KEEP' or 'SELL' based on the provided rubric.`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: { parts: [{ text: prompt }] },
     config: {
@@ -294,7 +316,7 @@ export async function optimizeTeam(
   Analyze this team for the target content. Provide specific stat targets and advice for each champion.
   Return the analysis in JSON format following the schema.`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: { parts: [{ text: prompt }] },
     config: {
