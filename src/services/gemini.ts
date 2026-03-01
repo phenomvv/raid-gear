@@ -29,173 +29,17 @@ function getCacheKey(prefix: string, data: any): string {
   return `${prefix}:${JSON.stringify(data)}`;
 }
 
-const TEAM_OPTIMIZATION_RUBRIC = `
-You are a world-class Raid: Shadow Legends strategist. Your goal is to help players optimize their champion teams for specific game content.
-Content examples: Clan Boss (UNM/NM), Hydra (Normal/Hard/Brutal/Nightmare), Doom Tower, Iron Twins, Sand Devil, Shogun, Arena.
+const TEAM_OPTIMIZATION_RUBRIC = `Expert Raid: Shadow Legends strategist. Optimize team stats for specific content (Clan Boss, Hydra, etc.).
+Evaluate current stats vs benchmarks. Provide target stats, actionable advice, and priority (HIGH/MEDIUM/LOW).
+Consider: ACC exceptions (cannot be resisted), passive stat boosts, and correct primary stat scaling (HP/DEF/ATK).`;
 
-CRITICAL KIT KNOWLEDGE:
-1. ACCURACY EXCEPTIONS: Some champions have skills that "Cannot be Resisted" (e.g., Thor Fafnir's Bane A1 Decrease ATK, Lydia's A2). DO NOT recommend Accuracy for these specific debuffs.
-2. PASSIVE SYNERGIES: Account for passives that grant stats (e.g., Gnut's DEF scaling, Michinaki's HP/DEF conversion).
-3. MULTI-STAT SCALING: Identify if a champion scales with HP, DEF, or ATK and prioritize the correct primary stat.
-
-For each champion in the team:
-1. Compare their CURRENT stats to the RECOMMENDED benchmarks for the target content.
-2. Provide specific TARGET stats they should aim for.
-3. Give actionable ADVICE on what to change.
-4. Assign a PRIORITY (HIGH, MEDIUM, LOW).
-`;
-
-const GEAR_EVALUATION_RUBRIC = `
-You are a top-tier Raid: Shadow Legends theorycrafter. Your goal is to provide 100% consistent gear evaluations.
-Follow this strict protocol:
-
-1. STAT SYNERGY GROUPS:
-   - NUKER: ATK%, Crit Rate, Crit DMG, Speed.
-   - TANK/SUPPORT: HP%, DEF%, Speed, Resistance, Accuracy.
-   - DEBUFFER: Accuracy, Speed, HP%, DEF%.
-
-2. AUTOMATIC SELL RULES:
-   - Gloves, Chest, or Boots with FLAT main stats (ATK, DEF, HP) are ALWAYS "SELL" (except Speed boots).
-   - 4-star gear or lower is ALWAYS "SELL" for mid-game players.
-   - Gear with 3+ flat substats (ATK, DEF, HP) at +0 is almost always "SELL".
-
-3. ROLLS & RARITY:
-   - SUBSTAT UNLOCKS: Rare gear starts with 2 substats but gains a 3rd at +12 and a 4th at +16. Epic gear starts with 3 and gains a 4th at +16. Legendary gear starts with all 4.
-   - CRITICAL KNOWLEDGE: Never state that Rare gear is "limited to 2 substats". It simply starts with 2. All gear (except Common/Uncommon/Rare at low levels) eventually has 4 substats at +16.
-   - MULTI-ROLLS: Double (2), Triple (3), and Quad (4) rolls in a single substat significantly increase the score.
-   - ROLL LIMIT: A gear piece can only have a total of 4 rolls across all substats (e.g., a triple roll in one stat and a single roll in another).
-   - DESIRABLE MULTI-ROLLS: Triple/Quad rolls in Speed, Crit Rate, Crit DMG, HP%, DEF%, ATK%, Accuracy, or Resistance are extremely valuable (Score 85+).
-   - REWORK VALUE: Triple/Quad rolls in "bad" stats (Flat HP/ATK/DEF) on 6-star Legendary/Mythical gear are worth keeping (Score 70+) because they can be REWORKED with Chaos Ore.
-   - UPGRADE LEVEL: A piece at +16 with confirmed good rolls is more valuable than a +0 piece with "potential".
-   - POTENTIAL VS ACTUAL: For gear at +0 to +12, evaluate based on the potential of the remaining rolls. For gear at +16, evaluate based on the actual rolls achieved. A triple/quad roll at +16 should significantly boost the score compared to its +0 version.
-
-4. KEEP CRITERIA:
-   - 6-star Legendary/Mythical with at least 2 synergistic substats.
-   - Any gear with a high Speed substat (10+ at +0, or any multi-roll).
-   - 5-star Epic/Legendary with perfect synergy (e.g., Savage set with Crit Rate and Crit DMG).
-   - ACCESSORIES: Must be for a relevant faction and have synergistic stats.
-
-5. SCORING SCALE:
-   - 0-40: Trash, sell immediately.
-   - 41-60: Mediocre, keep only if early game or desperate for the set.
-   - 61-80: Good, solid for most champions.
-   - 81-100: God-tier, perfect rolls and synergy.
-
-6. ENHANCEMENT ADVICE:
-   - ENCHANT: Recommend which substats to use Glyphs on.
-   - REWORK: Advise if the piece is a candidate for Chaos Ore (especially if it has a triple/quad roll in a flat stat).
-   - ASCEND: Advise if the piece is worth Oil ascension.
-`;
-
-export async function analyzeGear(
-  imageBase64: string,
-  mimeType: string,
-  roster: string[]
-): Promise<AnalysisResult> {
-  const cacheKey = getCacheKey('analyzeGear', { imageBase64: imageBase64.substring(0, 1000), roster });
-  if (cache.has(cacheKey)) return cache.get(cacheKey);
-
-  const rosterText = roster.length > 0 
-    ? roster.join(', ') 
-    : 'No champions in roster. Suggest general champion archetypes.';
-
-  const prompt = `Analyze this Raid: Shadow Legends gear screenshot.
-  
-  User Roster: ${rosterText}
-
-  Return the analysis in JSON format following the schema. Ensure the 'verdict' is strictly 'KEEP' or 'SELL' based on the provided rubric.`;
-
-  try {
-    const response = await getAI().models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        {
-          inlineData: {
-            data: imageBase64,
-            mimeType: mimeType,
-          },
-        },
-        { text: prompt },
-      ],
-      config: {
-        systemInstruction: GEAR_EVALUATION_RUBRIC,
-        temperature: 0,
-        seed: 42,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            gearDetails: {
-              type: Type.OBJECT,
-              properties: {
-                type: { type: Type.STRING },
-                set: { type: Type.STRING },
-                faction: { type: Type.STRING, description: "Optional: Faction for accessories" },
-                rank: { type: Type.STRING },
-                rarity: { type: Type.STRING },
-                level: { type: Type.NUMBER, description: "The upgrade level (0, 4, 8, 12, 16)" },
-                mainStat: { type: Type.STRING },
-                substats: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-              },
-              required: ['type', 'set', 'rank', 'rarity', 'mainStat', 'substats'],
-            },
-            evaluation: {
-              type: Type.OBJECT,
-              properties: {
-                score: { type: Type.NUMBER },
-                verdict: { type: Type.STRING, description: "Must be 'KEEP' or 'SELL'" },
-                reasoning: { type: Type.STRING },
-              },
-              required: ['score', 'verdict', 'reasoning'],
-            },
-            recommendations: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  champion: { type: Type.STRING },
-                  reason: { type: Type.STRING },
-                },
-                required: ['champion', 'reason'],
-              },
-            },
-            enhancements: {
-              type: Type.OBJECT,
-              properties: {
-                enchant: { type: Type.STRING },
-                rework: { type: Type.STRING },
-                ascend: { type: Type.STRING },
-              },
-              required: ['enchant', 'rework', 'ascend'],
-            },
-          },
-          required: ['gearDetails', 'evaluation', 'recommendations', 'enhancements'],
-        },
-      },
-    });
-
-    const text = response.text;
-    if (!text) {
-      throw new Error('The AI model returned an empty response. This might be a temporary issue with the service.');
-    }
-
-    const result = JSON.parse(text) as AnalysisResult;
-    cache.set(cacheKey, result);
-    return result;
-  } catch (error: any) {
-    console.error('Error in analyzeGear:', error);
-    if (error.message?.includes('API_KEY_INVALID')) {
-      throw new Error('Invalid API Key. Please check your configuration.');
-    }
-    if (error.message?.includes('fetch failed')) {
-      throw new Error('Network error. Please check your internet connection.');
-    }
-    throw error;
-  }
-}
+const GEAR_EVALUATION_RUBRIC = `Expert Raid: Shadow Legends gear evaluator.
+SYNERGY: Nuker (ATK/CR/CD/SPD), Tank (HP/DEF/SPD/RES/ACC), Debuffer (ACC/SPD/HP/DEF).
+ACCESSORIES: Rings, Amulets, and Banners are FACTION LOCKED. You MUST check the item's faction and only recommend champions from that specific faction. If no roster champions match the faction, suggest general archetypes for that faction.
+SELL: Flat main stats on Gloves/Chest/Boots (except SPD boots). 4* or lower. 3+ flat subs at +0.
+SCORING: 0-100. Consider multi-rolls (Triple/Quad), set synergy, and rework potential (Chaos Ore for flat triple/quads on 6* Leg/Myth).
+ADVICE: Glyphs, Chaos Ore, or Oil ascension.
+VERDICT: Strictly 'KEEP' or 'SELL'.`;
 
 export async function evaluateManualGear(
   gearDetails: {
@@ -215,25 +59,10 @@ export async function evaluateManualGear(
   if (cache.has(cacheKey)) return cache.get(cacheKey);
 
   const rosterText = roster.length > 0 
-    ? roster.join(', ') 
+    ? roster.slice(0, 50).join(', ') + (roster.length > 50 ? '...' : '')
     : 'No champions in roster. Suggest general champion archetypes.';
 
-  const prompt = `Evaluate this Raid: Shadow Legends gear piece based on the provided details.
-  
-  Gear Details:
-  - Type: ${gearDetails.type}
-  - Set: ${gearDetails.set}
-  ${gearDetails.faction ? `- Faction: ${gearDetails.faction}` : ''}
-  - Rank: ${gearDetails.rank}
-  - Rarity: ${gearDetails.rarity}
-  - Level: +${gearDetails.level || 0}
-  - Main Stat: ${gearDetails.mainStat}
-  - Substats: ${gearDetails.substats.join(', ')}
-  ${gearDetails.ascensionStat ? `- Ascension Stat: ${gearDetails.ascensionStat}` : ''}
-
-  User Roster: ${rosterText}
-
-  Return the evaluation in JSON format following the schema. Ensure the 'verdict' is strictly 'KEEP' or 'SELL' based on the provided rubric.`;
+  const prompt = `Evaluate gear: ${gearDetails.type}, ${gearDetails.set}, ${gearDetails.rank}, ${gearDetails.rarity}, +${gearDetails.level || 0}, Main: ${gearDetails.mainStat}, Subs: ${gearDetails.substats.join(', ')}. Roster: ${rosterText}. Return JSON. Verdict: KEEP/SELL. Limit recommendations to top 3 champions.`;
 
   try {
     const response = await getAI().models.generateContent({
@@ -329,11 +158,7 @@ export async function optimizeTeam(
   const cacheKey = getCacheKey('optimizeTeam', { contentName, teamData });
   if (cache.has(cacheKey)) return cache.get(cacheKey);
 
-  const prompt = `Target: ${contentName}
-  Data: ${JSON.stringify(teamData)}
-
-  Analyze this team for the target content. Provide specific stat targets and advice for each champion.
-  Return the analysis in JSON format following the schema.`;
+  const prompt = `Target: ${contentName}. Team: ${JSON.stringify(teamData)}. Return JSON.`;
 
   const response = await getAI().models.generateContent({
     model: 'gemini-3-flash-preview',

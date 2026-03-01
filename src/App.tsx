@@ -71,7 +71,7 @@ export default function App() {
   };
 
   return (
-    <div className="fixed inset-0 flex h-full w-full bg-zinc-950 overflow-hidden font-sans select-none">
+    <div className="fixed inset-0 flex h-screen w-screen bg-zinc-950 overflow-hidden font-sans select-none touch-pan-y">
       <RosterSidebar 
         roster={roster} 
         setRoster={setRoster} 
@@ -80,7 +80,7 @@ export default function App() {
         onSelectChampion={setSelectedChampion}
       />
       
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Navigation */}
         <div className="bg-zinc-900 border-b border-zinc-800 px-4 md:px-8 py-3 flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <div className="flex items-center gap-1 md:gap-4">

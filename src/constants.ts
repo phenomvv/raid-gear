@@ -68,7 +68,8 @@ export const POPULAR_CHAMPIONS: ChampionData[] = [
   ...["Narses the Necromancer"].map(name => ({ name, faction: "Undead Hordes" })),
   ...["Ankora the Sharp"].map(name => ({ name, faction: "Undead Hordes" })),
   ...["Wallmaster Othorion"].map(name => ({ name, faction: "High Elves" })),
-  ...["Xenomorph", "Predator"].map(name => ({ name, faction: "Lizardmen" }))
+  ...["Xenomorph"].map(name => ({ name, faction: "Dark Elves" })),
+  ...["Predator"].map(name => ({ name, faction: "Lizardmen" }))
 ];
 
 export const RAID_STATS = [
